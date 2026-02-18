@@ -16,8 +16,7 @@ jobs:
       # Install Tailscale
       # ----------------------------
       - name: Install Tailscale
-        run: |
-          brew install tailscale
+        run: brew install tailscale
 
       - name: Start Tailscale
         run: |
@@ -29,45 +28,50 @@ jobs:
             --ssh
 
       - name: Show Tailscale IP
-        run: |
-          tailscale ip -4
+        run: tailscale ip -4
 
       # ----------------------------
       # Enable SSH
       # ----------------------------
       - name: Enable SSH
-        run: |
-          sudo systemsetup -setremotelogin on
+        run: sudo systemsetup -setremotelogin on
 
       # ----------------------------
-      # Install Ollama
+      # Install Ollama (CLI only)
       # ----------------------------
-      - name: Install Ollama
+      - name: Install Ollama CLI
         run: |
-          curl -fsSL https://ollama.com/install.sh | sh
+          brew install ollama
+          which ollama
           ollama --version
 
       # ----------------------------
-      # Start Ollama Server
+      # Start Ollama Headless
       # ----------------------------
-      - name: Start Ollama
+      - name: Start Ollama Server
         run: |
-          ollama serve > ollama.log 2>&1 &
-          sleep 5
+          nohup ollama serve > ollama.log 2>&1 &
+          sleep 10
+          curl http://localhost:11434/api/tags || true
 
       # ----------------------------
-      # Pull Qwen Coder 7B
+      # Pull Smaller Quantized Model (Safer)
       # ----------------------------
       - name: Pull Model
         run: |
-          ollama pull qwen2.5-coder:7b
+          ollama pull qwen2.5-coder:7b-q4_K_M
 
       # ----------------------------
-      # Test Model with Prompt
+      # Test via API (CI Safe)
       # ----------------------------
       - name: Test Prompt
         run: |
-          ollama run qwen2.5-coder:7b "hy"
+          curl http://localhost:11434/api/generate \
+            -d '{
+              "model": "qwen2.5-coder:7b-q4_K_M",
+              "prompt": "hy",
+              "stream": false
+            }'
 
       # ----------------------------
       # Keep Runner Alive
