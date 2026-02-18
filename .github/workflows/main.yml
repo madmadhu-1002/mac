@@ -1,4 +1,4 @@
-name: macOS Tailscale SSH
+name: macOS Tailscale SSH + Ollama
 
 on:
   workflow_dispatch:
@@ -12,6 +12,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ----------------------------
+      # Install Tailscale
+      # ----------------------------
       - name: Install Tailscale
         run: |
           brew install tailscale
@@ -20,18 +23,56 @@ jobs:
         run: |
           sudo tailscaled --state=tailscaled.state &
           sleep 5
-          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTHKEY }} --hostname=github-macos-runner --ssh
+          sudo tailscale up \
+            --authkey=${{ secrets.TAILSCALE_AUTHKEY }} \
+            --hostname=github-macos-runner \
+            --ssh
 
       - name: Show Tailscale IP
         run: |
           tailscale ip -4
 
+      # ----------------------------
+      # Enable SSH
+      # ----------------------------
       - name: Enable SSH
         run: |
           sudo systemsetup -setremotelogin on
-          sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist
 
+      # ----------------------------
+      # Install Ollama
+      # ----------------------------
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama --version
+
+      # ----------------------------
+      # Start Ollama Server
+      # ----------------------------
+      - name: Start Ollama
+        run: |
+          ollama serve > ollama.log 2>&1 &
+          sleep 5
+
+      # ----------------------------
+      # Pull Qwen Coder 7B
+      # ----------------------------
+      - name: Pull Model
+        run: |
+          ollama pull qwen2.5-coder:7b
+
+      # ----------------------------
+      # Test Model with Prompt
+      # ----------------------------
+      - name: Test Prompt
+        run: |
+          ollama run qwen2.5-coder:7b "hy"
+
+      # ----------------------------
+      # Keep Runner Alive
+      # ----------------------------
       - name: Keep Runner Alive
         run: |
-          echo "Runner is ready for SSH over Tailscale"
+          echo "Runner ready with Ollama + Tailscale"
           sleep 21600
