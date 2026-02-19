@@ -55,22 +55,26 @@ jobs:
           curl http://localhost:11434/api/tags || true
 
       # ----------------------------
-      # Pull Smaller Quantized Model (Safer)
+      # Pull Quantized Model (Q4)
       # ----------------------------
       - name: Pull Model
         run: |
-          ollama pull qwen2.5-coder:7b
-
+          ollama pull qwen2.5-coder:7b-q4_K_M
+      
       # ----------------------------
       # Test via API (CI Safe)
       # ----------------------------
       - name: Test Prompt
         run: |
           curl http://localhost:11434/api/generate \
+            -H "Content-Type: application/json" \
             -d '{
-              "model": "qwen2.5-coder:7b",
+              "model": "qwen2.5-coder:7b-q4_K_M",
               "prompt": "hy",
-              "stream": false
+              "stream": false,
+              "options": {
+                "num_ctx": 8192
+              }
             }'
 
       # ----------------------------
