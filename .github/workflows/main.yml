@@ -59,7 +59,7 @@ jobs:
       # ----------------------------
       - name: Pull Model
         run: |
-          ollama pull qwen2.5-coder:7b-q4_K_M
+          ollama pull qwen2.5-coder:3b
       
       # ----------------------------
       # Test via API (CI Safe)
@@ -69,7 +69,7 @@ jobs:
           curl http://localhost:11434/api/generate \
             -H "Content-Type: application/json" \
             -d '{
-              "model": "qwen2.5-coder:7b-q4_K_M",
+              "model": "qwen2.5-coder:3b",
               "prompt": "hy",
               "stream": false,
               "options": {
