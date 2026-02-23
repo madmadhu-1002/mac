@@ -1,10 +1,10 @@
 version: 2.1
 
 jobs:
-  macos-ssh:
+  build:
     macos:
-      xcode: "15.0.0"
-    resource_class: macos.m1.medium.gen1
+      xcode: "15.3.0"   # or latest supported
+    resource_class: m1.medium
     working_directory: ~/project
 
     steps:
