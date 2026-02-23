@@ -1,86 +1,99 @@
-name: macOS Tailscale SSH + Ollama
-
-on:
-  workflow_dispatch:
+version: 2.1
 
 jobs:
   macos-ssh:
-    runs-on: macos-latest
-    timeout-minutes: 360
+    macos:
+      xcode: "15.0.0"   # choose available version in CircleCI docs
+    resource_class: macos.m1.medium.gen1
+    working_directory: ~/project
+    timeout: 360m
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - checkout
 
       # ----------------------------
       # Install Tailscale
       # ----------------------------
-      - name: Install Tailscale
-        run: brew install tailscale
+      - run:
+          name: Install Tailscale
+          command: |
+            brew update
+            brew install tailscale
 
-      - name: Start Tailscale
-        run: |
-          sudo tailscaled --state=tailscaled.state &
-          sleep 5
-          sudo tailscale up \
-            --authkey=tskey-auth-kWyi656VFi11CNTRL-1GUhv73gRu6LxEEorHGUu6XWKQ9BcoZ8 \
-            --hostname=github-macos-runner \
-            --ssh
+      - run:
+          name: Start Tailscale
+          command: |
+            sudo tailscaled --state=tailscaled.state &
+            sleep 5
+            sudo tailscale up \
+              --authkey=${TAILSCALE_AUTH_KEY} \
+              --hostname=circleci-macos-runner \
+              --ssh
 
-      - name: Show Tailscale IP
-        run: tailscale ip -4
+      - run:
+          name: Show Tailscale IP
+          command: tailscale ip -4
 
       # ----------------------------
       # Enable SSH
       # ----------------------------
-      - name: Enable SSH
-        run: sudo systemsetup -setremotelogin on
+      - run:
+          name: Enable SSH
+          command: sudo systemsetup -setremotelogin on
 
       # ----------------------------
-      # Install Ollama (CLI only)
+      # Install Ollama
       # ----------------------------
-      - name: Install Ollama CLI
-        run: |
-          brew install ollama
-          which ollama
-          ollama --version
+      - run:
+          name: Install Ollama CLI
+          command: |
+            brew install ollama
+            which ollama
+            ollama --version
 
       # ----------------------------
-      # Start Ollama Headless
+      # Start Ollama
       # ----------------------------
-      - name: Start Ollama Server
-        run: |
-          nohup ollama serve > ollama.log 2>&1 &
-          sleep 10
-          curl http://localhost:11434/api/tags || true
+      - run:
+          name: Start Ollama Server
+          command: |
+            nohup ollama serve > ollama.log 2>&1 &
+            sleep 10
+            curl http://localhost:11434/api/tags || true
 
       # ----------------------------
-      # Pull Quantized Model (Q4)
+      # Pull Model
       # ----------------------------
-      - name: Pull Model
-        run: |
-          ollama pull qwen2.5-coder:3b
-      
+      - run:
+          name: Pull Model
+          command: ollama pull qwen2.5-coder:3b
+
       # ----------------------------
-      # Test via API (CI Safe)
+      # Test Prompt
       # ----------------------------
-      - name: Test Prompt
-        run: |
-          curl http://localhost:11434/api/generate \
-            -H "Content-Type: application/json" \
-            -d '{
-              "model": "qwen2.5-coder:3b",
-              "prompt": "hy",
-              "stream": false,
-              "options": {
-                "num_ctx": 8192
-              }
-            }'
+      - run:
+          name: Test Prompt
+          command: |
+            curl http://localhost:11434/api/generate \
+              -H "Content-Type: application/json" \
+              -d '{
+                "model": "qwen2.5-coder:3b",
+                "prompt": "hy",
+                "stream": false,
+                "options": { "num_ctx": 8192 }
+              }'
 
       # ----------------------------
       # Keep Runner Alive
       # ----------------------------
-      - name: Keep Runner Alive
-        run: |
-          echo "Runner ready with Ollama + Tailscale"
-          sleep 21600
+      - run:
+          name: Keep Runner Alive
+          command: |
+            echo "Runner ready with Ollama + Tailscale"
+            sleep 21600
+
+workflows:
+  version: 2
+  macos_workflow:
+    jobs:
+      - macos-ssh
