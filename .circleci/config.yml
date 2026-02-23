@@ -1,31 +1,86 @@
-# Use the latest 2.1 version of CircleCI pipeline process engine.
-# See: https://circleci.com/docs/reference/configuration-reference
-version: 2.1
+name: macOS Tailscale SSH + Ollama
 
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/guides/orchestrate/jobs-steps/#jobs-overview & https://circleci.com/docs/reference/configuration-reference/#jobs
+on:
+  workflow_dispatch:
+
 jobs:
-  say-hello:
-    # Specify the execution environment. You can specify an image from Docker Hub or use one of our convenience images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/guides/execution-managed/executor-intro/ & https://circleci.com/docs/reference/configuration-reference/#executor-job
-    docker:
-      # Specify the version you desire here
-      # See: https://circleci.com/developer/images/image/cimg/base
-      - image: cimg/base:current
+  macos-ssh:
+    runs-on: macos-latest
+    timeout-minutes: 360
 
-    # Add steps to the job
-    # See: https://circleci.com/docs/guides/orchestrate/jobs-steps/#steps-overview & https://circleci.com/docs/reference/configuration-reference/#steps
     steps:
-      # Checkout the code as the first step.
-      - checkout
-      - run:
-          name: "Say hello"
-          command: "echo Hello, World!"
+      - name: Checkout
+        uses: actions/checkout@v4
 
-# Orchestrate jobs using workflows
-# See: https://circleci.com/docs/guides/orchestrate/workflows/ & https://circleci.com/docs/reference/configuration-reference/#workflows
-workflows:
-  say-hello-workflow: # This is the name of the workflow, feel free to change it to better match your workflow.
-    # Inside the workflow, you define the jobs you want to run.
-    jobs:
-      - say-hello
+      # ----------------------------
+      # Install Tailscale
+      # ----------------------------
+      - name: Install Tailscale
+        run: brew install tailscale
+
+      - name: Start Tailscale
+        run: |
+          sudo tailscaled --state=tailscaled.state &
+          sleep 5
+          sudo tailscale up \
+            --authkey=tskey-auth-kWyi656VFi11CNTRL-1GUhv73gRu6LxEEorHGUu6XWKQ9BcoZ8 \
+            --hostname=github-macos-runner \
+            --ssh
+
+      - name: Show Tailscale IP
+        run: tailscale ip -4
+
+      # ----------------------------
+      # Enable SSH
+      # ----------------------------
+      - name: Enable SSH
+        run: sudo systemsetup -setremotelogin on
+
+      # ----------------------------
+      # Install Ollama (CLI only)
+      # ----------------------------
+      - name: Install Ollama CLI
+        run: |
+          brew install ollama
+          which ollama
+          ollama --version
+
+      # ----------------------------
+      # Start Ollama Headless
+      # ----------------------------
+      - name: Start Ollama Server
+        run: |
+          nohup ollama serve > ollama.log 2>&1 &
+          sleep 10
+          curl http://localhost:11434/api/tags || true
+
+      # ----------------------------
+      # Pull Quantized Model (Q4)
+      # ----------------------------
+      - name: Pull Model
+        run: |
+          ollama pull qwen2.5-coder:3b
+      
+      # ----------------------------
+      # Test via API (CI Safe)
+      # ----------------------------
+      - name: Test Prompt
+        run: |
+          curl http://localhost:11434/api/generate \
+            -H "Content-Type: application/json" \
+            -d '{
+              "model": "qwen2.5-coder:3b",
+              "prompt": "hy",
+              "stream": false,
+              "options": {
+                "num_ctx": 8192
+              }
+            }'
+
+      # ----------------------------
+      # Keep Runner Alive
+      # ----------------------------
+      - name: Keep Runner Alive
+        run: |
+          echo "Runner ready with Ollama + Tailscale"
+          sleep 21600
