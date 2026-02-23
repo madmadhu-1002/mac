@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build:
     macos:
-      xcode: "15.3.0"   # or latest supported
+      xcode: "15.3.0"
     resource_class: m1.medium
     working_directory: ~/project
 
@@ -72,4 +72,4 @@ workflows:
   version: 2
   macos_workflow:
     jobs:
-      - macos-ssh
+      - build
