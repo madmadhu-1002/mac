@@ -23,7 +23,7 @@ jobs:
           sudo tailscaled --state=tailscaled.state &
           sleep 5
           sudo tailscale up \
-            --authkey=${{ secrets.TAILSCALE_AUTHKEY }} \
+            --authkey=tskey-auth-kWyi656VFi11CNTRL-1GUhv73gRu6LxEEorHGUu6XWKQ9BcoZ8 \
             --hostname=github-macos-runner \
             --ssh
 
