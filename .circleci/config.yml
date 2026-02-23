@@ -3,17 +3,13 @@ version: 2.1
 jobs:
   macos-ssh:
     macos:
-      xcode: "15.0.0"   # choose available version in CircleCI docs
+      xcode: "15.0.0"
     resource_class: macos.m1.medium.gen1
     working_directory: ~/project
-    timeout: 360m
 
     steps:
       - checkout
 
-      # ----------------------------
-      # Install Tailscale
-      # ----------------------------
       - run:
           name: Install Tailscale
           command: |
@@ -26,7 +22,7 @@ jobs:
             sudo tailscaled --state=tailscaled.state &
             sleep 5
             sudo tailscale up \
-              --authkey=${TAILSCALE_AUTH_KEY} \
+              --authkey=tskey-auth-kWyi656VFi11CNTRL-1GUhv73gRu6LxEEorHGUu6XWKQ9BcoZ8 \
               --hostname=circleci-macos-runner \
               --ssh
 
@@ -34,43 +30,26 @@ jobs:
           name: Show Tailscale IP
           command: tailscale ip -4
 
-      # ----------------------------
-      # Enable SSH
-      # ----------------------------
       - run:
           name: Enable SSH
           command: sudo systemsetup -setremotelogin on
 
-      # ----------------------------
-      # Install Ollama
-      # ----------------------------
       - run:
           name: Install Ollama CLI
           command: |
             brew install ollama
-            which ollama
             ollama --version
 
-      # ----------------------------
-      # Start Ollama
-      # ----------------------------
       - run:
           name: Start Ollama Server
           command: |
             nohup ollama serve > ollama.log 2>&1 &
             sleep 10
-            curl http://localhost:11434/api/tags || true
 
-      # ----------------------------
-      # Pull Model
-      # ----------------------------
       - run:
           name: Pull Model
           command: ollama pull qwen2.5-coder:3b
 
-      # ----------------------------
-      # Test Prompt
-      # ----------------------------
       - run:
           name: Test Prompt
           command: |
@@ -79,17 +58,14 @@ jobs:
               -d '{
                 "model": "qwen2.5-coder:3b",
                 "prompt": "hy",
-                "stream": false,
-                "options": { "num_ctx": 8192 }
+                "stream": false
               }'
 
-      # ----------------------------
-      # Keep Runner Alive
-      # ----------------------------
       - run:
           name: Keep Runner Alive
+          no_output_timeout: 360m
           command: |
-            echo "Runner ready with Ollama + Tailscale"
+            echo "Runner ready"
             sleep 21600
 
 workflows:
